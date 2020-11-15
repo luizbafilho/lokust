@@ -1,0 +1,7 @@
+apiVersion: tests.lokust.io/v1beta1
+kind: LocustTest
+metadata:
+  name: locusttest-sample
+spec:
+  # Add fields here
+  replicas: 1
