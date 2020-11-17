@@ -4,11 +4,12 @@ metadata:
   name: locustfile-configmap
 data:
   locustfile.py: |
-    from locust import HttpUser, between, task
+    from locust import between, task
+    from locust.contrib.fasthttp import FastHttpUser
 
-    class WebsiteUser(HttpUser):
-        host = "https://google.com"
-        wait_time = between(5, 15)
+    class WebsiteUser(FastHttpUser):
+        host = "http://nginx"
+        wait_time = between(0, 1)
 
         @task
         def index(self):

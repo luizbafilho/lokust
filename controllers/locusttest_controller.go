@@ -24,10 +24,16 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	testsv1beta1 "github.com/luizbafilho/lokust/api/v1beta1"
+)
+
+const (
+	ComponentMaster = "master"
+	ComponentWorker = "worker"
 )
 
 // LocustTestReconciler reconciles a LocustTest object
@@ -49,12 +55,30 @@ func (r *LocustTestReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	deployment, err := r.desiredMasterDeployment(test)
+	applyOpts := []client.PatchOption{client.ForceOwnership, client.FieldOwner("locusttest-controller")}
+
+	masterDeploy, err := r.desiredMasterDeployment(test)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	applyOpts := []client.PatchOption{client.ForceOwnership, client.FieldOwner("locusttest-controller")}
-	err = r.Patch(ctx, &deployment, client.Apply, applyOpts...)
+	err = r.Patch(ctx, &masterDeploy, client.Apply, applyOpts...)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	masterSvc, err := r.desiredMasterService(test)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	err = r.Patch(ctx, &masterSvc, client.Apply, applyOpts...)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	workerDeploy, err := r.desiredWorkerDeployment(test)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	err = r.Patch(ctx, &workerDeploy, client.Apply, applyOpts...)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -98,31 +122,79 @@ func (r *LocustTestReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *LocustTestReconciler) desiredMasterDeployment(test testsv1beta1.LocustTest) (appsv1.Deployment, error) {
-	depl := appsv1.Deployment{
-		TypeMeta: metav1.TypeMeta{APIVersion: appsv1.SchemeGroupVersion.String(), Kind: "Deployment"},
+func (r *LocustTestReconciler) desiredMasterService(test testsv1beta1.LocustTest) (corev1.Service, error) {
+	svc := corev1.Service{
+		TypeMeta: metav1.TypeMeta{APIVersion: corev1.SchemeGroupVersion.String(), Kind: "Service"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      test.Name,
 			Namespace: test.Namespace,
+			// OwnerReferences: []metav1.OwnerReference{*controller.NewProxyOwnerRef(p)},
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: makeLabels(test, ComponentMaster),
+			Type:     "ClusterIP",
+			Ports: []corev1.ServicePort{
+				{
+					Name:     "loc-master-web",
+					Protocol: "TCP",
+					Port:     8089,
+					TargetPort: intstr.IntOrString{
+						IntVal: 8089,
+					},
+				},
+				{
+					Name:     "loc-master-p1",
+					Protocol: "TCP",
+					Port:     5557,
+					TargetPort: intstr.IntOrString{
+						IntVal: 5557,
+					},
+				},
+				{
+					Name:     "loc-master-p2",
+					Protocol: "TCP",
+					Port:     5558,
+					TargetPort: intstr.IntOrString{
+						IntVal: 5558,
+					},
+				},
+			},
+		},
+	}
+
+	if err := ctrl.SetControllerReference(&test, &svc, r.Scheme); err != nil {
+		return svc, err
+	}
+
+	return svc, nil
+}
+
+func (r *LocustTestReconciler) desiredMasterDeployment(test testsv1beta1.LocustTest) (appsv1.Deployment, error) {
+	replicas := int32(1)
+	depl := appsv1.Deployment{
+		TypeMeta: metav1.TypeMeta{APIVersion: appsv1.SchemeGroupVersion.String(), Kind: "Deployment"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      test.Name + "-master",
+			Namespace: test.Namespace,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: test.Spec.Replicas, // won't be nil because defaulting
+			Replicas: &replicas, // won't be nil because defaulting
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"locusttest": test.Name},
+				MatchLabels: makeLabels(test, ComponentMaster),
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{"locusttest": test.Name},
+					Labels: makeLabels(test, ComponentMaster),
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
 							Name:  "locust-master",
-							Image: "locustio/locust:1.4.0",
+							Image: "locustio/locust:1.3.2",
 							Env: []corev1.EnvVar{
 								{Name: "HOST", Value: "https://www.google.com"},
 							},
-							Args: []string{"-f", "/mnt/locust/locustfile.py"},
+							Args: []string{"--master", "-f", "/mnt/locust/locustfile.py"},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "locustfile",
@@ -160,4 +232,79 @@ func (r *LocustTestReconciler) desiredMasterDeployment(test testsv1beta1.LocustT
 	}
 
 	return depl, nil
+}
+
+func (r *LocustTestReconciler) desiredWorkerDeployment(test testsv1beta1.LocustTest) (appsv1.Deployment, error) {
+	depl := appsv1.Deployment{
+		TypeMeta: metav1.TypeMeta{APIVersion: appsv1.SchemeGroupVersion.String(), Kind: "Deployment"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      test.Name + "-worker",
+			Namespace: test.Namespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: test.Spec.Replicas, // won't be nil because defaulting
+			Selector: &metav1.LabelSelector{
+				MatchLabels: makeLabels(test, ComponentWorker),
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: makeLabels(test, ComponentWorker),
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "locust-worker",
+							Image: "locustio/locust:1.3.2",
+							Env: []corev1.EnvVar{
+								{Name: "HOST", Value: "https://www.google.com"},
+							},
+							Args: []string{
+								"--worker",
+								"--master-host", test.Name,
+								"-f", "/mnt/locust/locustfile.py",
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "locustfile",
+									ReadOnly:  true,
+									MountPath: "/mnt/locust",
+								},
+							},
+							Ports: []corev1.ContainerPort{
+								{ContainerPort: 8089, Name: "loc-master-web", Protocol: "TCP"},
+								{ContainerPort: 5557, Name: "loc-master-p1", Protocol: "TCP"},
+								{ContainerPort: 5558, Name: "loc-master-p2", Protocol: "TCP"},
+							},
+							Resources: *test.Spec.Resources.DeepCopy(),
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "locustfile",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "locustfile-configmap",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	if err := ctrl.SetControllerReference(&test, &depl, r.Scheme); err != nil {
+		return depl, err
+	}
+
+	return depl, nil
+}
+
+func makeLabels(test testsv1beta1.LocustTest, component string) map[string]string {
+	return map[string]string{
+		"locust-test":      test.Name,
+		"locust-component": component,
+	}
 }
