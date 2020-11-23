@@ -1,0 +1,8 @@
+domain: lokust.io
+multigroup: true
+repo: github.com/luizbafilho/lokust
+resources:
+- group: loadtests
+  kind: LocustTest
+  version: v1beta1
+version: "2"

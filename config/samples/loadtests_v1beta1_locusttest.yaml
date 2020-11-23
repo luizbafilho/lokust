@@ -1,0 +1,7 @@
+apiVersion: loadtests.lokust.io/v1beta1
+kind: LocustTest
+metadata:
+  name: locusttest-sample
+spec:
+  # Add fields here
+  foo: bar
