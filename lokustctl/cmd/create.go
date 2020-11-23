@@ -56,7 +56,7 @@ func init() {
 func buildLocustTest(name string, namespace string) (loadtestsv1beta1.LocustTest, error) {
 	replicas := int32(1)
 	test := loadtestsv1beta1.LocustTest{
-		TypeMeta: metav1.TypeMeta{APIVersion: loadtestsv1beta1.GroupVersion.String(), Kind: "LocustTest"},
+		TypeMeta: metav1.TypeMeta{APIVersion: loadtestsv1beta1.SchemeGroupVersion.String(), Kind: "LocustTest"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,

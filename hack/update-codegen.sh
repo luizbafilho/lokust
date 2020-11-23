@@ -21,19 +21,21 @@ set -o pipefail
 SCRIPT_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
 # Make sure code-generator is available
-go get k8s.io/code-generator/cmd/client-gen
+go get k8s.io/code-generator/cmd/client-gen@v0.17.2
 
 CODEGEN_PKG=${CODEGEN_PKG:-$(go env GOPATH)/src/k8s.io/code-generator}
+
+echo $(dirname "${BASH_SOURCE[0]}")/../../..
 
 # generate the code with:
 # --output-base    because this script should also be able to run inside the vendor dir of
 #                  k8s.io/kubernetes. The output-base is needed for the generators to output into the vendor dir
 #                  instead of the $GOPATH directly. For normal projects this can be dropped.
 bash "${CODEGEN_PKG}"/generate-groups.sh "client" \
-  github.com/luizbafilho/lokust github.com/luizbafilho/lokust/api \
-  tests:v1beta1 \
-  --output-base "$(dirname "${BASH_SOURCE[0]}")/../../.." \
-  --go-header-file "${SCRIPT_ROOT}"/hack/boilerplate.go.txt
+  github.com/luizbafilho/lokust github.com/luizbafilho/lokust/apis \
+  loadtests:v1beta1 \
+  # --output-base github.com/luizbafilho/lokust/clientset \
+  # --go-header-file "${SCRIPT_ROOT}"/hack/boilerplate.go.txt
 
 # To use your own boilerplate text append:
 #   --go-header-file "${SCRIPT_ROOT}"/hack/custom-boilerplate.go.txt

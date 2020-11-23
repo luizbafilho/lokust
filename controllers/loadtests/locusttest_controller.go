@@ -94,7 +94,7 @@ func (r *LocustTestReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 var (
 	ownerKey = ".metadata.controller"
-	apiGVStr = loadtestsv1beta1.GroupVersion.String()
+	apiGVStr = loadtestsv1beta1.SchemeGroupVersion.String()
 )
 
 func (r *LocustTestReconciler) SetupWithManager(mgr ctrl.Manager) error {
