@@ -1,7 +1,0 @@
-domain: lokust.io
-repo: github.com/luizbafilho/lokust
-resources:
-- group: tests
-  kind: LocustTest
-  version: v1beta1
-version: "2"
