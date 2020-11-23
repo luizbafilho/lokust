@@ -30,7 +30,6 @@ type LocustTestSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// +kubebuilder:default:1
-	// +kubebuilder:validation:Minimum=1
 	// Number of workers
 	Replicas *int32 `json:"replicas,omitempty"`
 
