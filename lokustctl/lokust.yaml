@@ -1,0 +1,17 @@
+name: luiz
+replicas: 1
+resources:
+  master:
+    limits:
+      cpu: 200m
+      memory: 300Mi
+    requests:
+      cpu: 110m
+      memory: 100Mi
+  workers:
+    limits:
+      cpu: 200m
+      memory: 300Mi
+    requests:
+      cpu: 110m
+      memory: 100Mi

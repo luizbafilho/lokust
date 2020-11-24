@@ -17,10 +17,14 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/k0kubun/pp"
 	loadtestsv1beta1 "github.com/luizbafilho/lokust/apis/loadtests/v1beta1"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -32,40 +36,68 @@ var createCmd = &cobra.Command{
 
 	lokust create --name [test-name] -f locustfile.py
 	`,
-	Run: func(cmd *cobra.Command, args []string) {
-		pp.Println(config)
-		fmt.Println("create called")
-	},
+	Run: createRun,
+}
+
+func createRun(cmd *cobra.Command, args []string) {
+	pp.Println(config)
+	lt, err := ltclientset.LoadtestsV1beta1().LocustTests(config.Namespace).Create(buildLocustTest(config))
+	if err != nil {
+		fmt.Printf("Failed creating %s test. err: %s", lt.Name, err)
+		os.Exit(1)
+	}
 }
 
 func init() {
 	rootCmd.AddCommand(createCmd)
 
-	// Here you will define your flags and configuration settings.
+	viper.BindPFlags(createCmd.Flags())
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// createCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// createCmd.Flags().StringVar(config.Name, "name", "", "Test name")
 	createCmd.Flags().StringVar(&config.Name, "name", "", "Test name")
+	createCmd.MarkFlagRequired("name")
+
+	createCmd.Flags().Int32Var(&config.Replicas, "replicas", 1, "Worker nodes")
 }
 
-func buildLocustTest(name string, namespace string) (loadtestsv1beta1.LocustTest, error) {
-	replicas := int32(1)
+func buildLocustTest(config Config) *loadtestsv1beta1.LocustTest {
+
 	test := loadtestsv1beta1.LocustTest{
 		TypeMeta: metav1.TypeMeta{APIVersion: loadtestsv1beta1.SchemeGroupVersion.String(), Kind: "LocustTest"},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
+			Name:      config.Name,
+			Namespace: config.Namespace,
 		},
 		Spec: loadtestsv1beta1.LocustTestSpec{
-			Replicas: &replicas, // won't be nil because defaulting
-			// Resources: nil,
+			Replicas: &config.Replicas, // won't be nil because defaulting
+			Resources: loadtestsv1beta1.LocustTestResources{
+				Master: corev1.ResourceRequirements{
+					Limits:   ConvertToCoreV1ResourceList(config.Resources.Master.Limits),
+					Requests: ConvertToCoreV1ResourceList(config.Resources.Master.Requests),
+				},
+				Workers: corev1.ResourceRequirements{
+					Limits:   ConvertToCoreV1ResourceList(config.Resources.Workers.Limits),
+					Requests: ConvertToCoreV1ResourceList(config.Resources.Workers.Requests),
+				},
+			},
 		},
 	}
 
-	return test, nil
+	return &test
+}
+
+func ConvertToCoreV1ResourceList(resourceList map[string]string) corev1.ResourceList {
+	capacity := make(corev1.ResourceList)
+
+	if len(resourceList) > 0 {
+		for k, v := range resourceList {
+			quantity, err := resource.ParseQuantity(v)
+			if err != nil {
+				fmt.Printf("Failed converting %s into resource.Quantity. err: %s", k, err)
+				os.Exit(1)
+			}
+			capacity[corev1.ResourceName(k)] = quantity
+		}
+	}
+
+	return capacity
 }

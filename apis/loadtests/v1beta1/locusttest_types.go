@@ -22,6 +22,10 @@ import (
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+type LocustTestResources struct {
+	Master  corev1.ResourceRequirements `json:"master"`
+	Workers corev1.ResourceRequirements `json:"workers"`
+}
 
 // LocustTestSpec defines the desired state of LocustTest
 type LocustTestSpec struct {
@@ -33,8 +37,8 @@ type LocustTestSpec struct {
 	Replicas *int32 `json:"replicas,omitempty"`
 
 	// +optional
-	// Workers resources
-	Resources corev1.ResourceRequirements `json:"resources"`
+	// Test resources
+	Resources LocustTestResources `json:"resources,omitempty"`
 }
 
 // LocustTestStatus defines the observed state of LocustTest

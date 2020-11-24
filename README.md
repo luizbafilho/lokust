@@ -16,6 +16,12 @@ linkerd install | kubectl apply -f -
 lokustctl create --namespace loadtests --name app-test --replicas 8 -f locustfile.py
 ```
 
+**Scale a load test**
+
+```sh
+lokustctl scale --name app-test --replicas 10
+```
+
 **Creates the the test in the current namespace passing the directory as execution module**
 
 > requires the locustfile.py file to be in the root directory

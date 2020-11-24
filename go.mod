@@ -3,7 +3,9 @@ module github.com/luizbafilho/lokust
 go 1.13
 
 require (
+	cloud.google.com/go v0.38.0
 	github.com/go-logr/logr v0.1.0
+	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
 	github.com/k0kubun/pp v3.0.1+incompatible
 	github.com/onsi/ginkgo v1.11.0
 	github.com/onsi/gomega v1.8.1

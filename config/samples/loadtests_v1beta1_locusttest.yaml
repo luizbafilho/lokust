@@ -4,4 +4,4 @@ metadata:
   name: locusttest-sample
 spec:
   # Add fields here
-  foo: bar
+  replicas: 1

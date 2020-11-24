@@ -18,15 +18,20 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
+	loadtestsclientset "github.com/luizbafilho/lokust/clientset/versioned"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
 
 	"github.com/spf13/viper"
 )
 
 var (
-	config  Config
-	cfgFile string
+	config      Config = Config{}
+	cfgFile     string
+	ltclientset *loadtestsclientset.Clientset
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -43,6 +48,21 @@ var rootCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	kubeconfig := filepath.Join(homedir.HomeDir(), ".kube", "config")
+
+	// use the current context in kubeconfig
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// create the clientset
+	ltclientset, err = loadtestsclientset.NewForConfig(config)
+	if err != nil {
+		fmt.Printf("Unable to create kubernetes client: %s", err)
+		os.Exit(1)
+	}
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -50,15 +70,14 @@ func Execute() {
 }
 
 func init() {
-	config = Config{}
-
 	cobra.OnInitialize(initConfig)
 
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is <current directory>/lokustctl.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default <current directory>/lokust.yaml)")
+	rootCmd.PersistentFlags().StringVar(&config.Namespace, "namespace", "default", "Kubernetes namespace")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
@@ -73,9 +92,10 @@ func initConfig() {
 	} else {
 		// Search config in home directory with name "lokustctl" (without extension).
 		viper.AddConfigPath(".")
-		viper.SetConfigName("lokustctl")
+		viper.SetConfigName("lokust")
 	}
 
+	// viper.BindPFlags(rootCmd.Flags())
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.

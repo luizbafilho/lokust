@@ -207,7 +207,7 @@ func (r *LocustTestReconciler) desiredMasterDeployment(test loadtestsv1beta1.Loc
 								{ContainerPort: 5557, Name: "loc-master-p1", Protocol: "TCP"},
 								{ContainerPort: 5558, Name: "loc-master-p2", Protocol: "TCP"},
 							},
-							Resources: *test.Spec.Resources.DeepCopy(),
+							Resources: *test.Spec.Resources.Master.DeepCopy(),
 						},
 					},
 					Volumes: []corev1.Volume{
@@ -275,7 +275,7 @@ func (r *LocustTestReconciler) desiredWorkerDeployment(test loadtestsv1beta1.Loc
 								{ContainerPort: 5557, Name: "loc-master-p1", Protocol: "TCP"},
 								{ContainerPort: 5558, Name: "loc-master-p2", Protocol: "TCP"},
 							},
-							Resources: *test.Spec.Resources.DeepCopy(),
+							Resources: *test.Spec.Resources.Workers.DeepCopy(),
 						},
 					},
 					Volumes: []corev1.Volume{
@@ -304,7 +304,7 @@ func (r *LocustTestReconciler) desiredWorkerDeployment(test loadtestsv1beta1.Loc
 
 func makeLabels(test loadtestsv1beta1.LocustTest, component string) map[string]string {
 	return map[string]string{
-		"locust-test":      test.Name,
-		"locust-component": component,
+		"lokust-loadtest-name": test.Name,
+		"locust-component":     component,
 	}
 }
