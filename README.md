@@ -2,15 +2,13 @@
 
 [Locust.io](https://locust.io/) Kubernetes Operator
 
-## Initializing lokust on the Kubernetes cluster
+**Initializing lokust on the Kubernetes cluster**
 
 This deploys all necessary k8s CRDs used to manage the tests
 
 ```sh
 linkerd install | kubectl apply -f -
 ```
-
-## Creating a new load test
 
 **Creates the test loadtests namespace using a single file**
 
