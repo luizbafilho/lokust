@@ -1,6 +1,6 @@
 # lokust
 
-Locust.io Kubernetes Operator
+[Locust.io](https://locust.io/) Kubernetes Operator
 
 ## Initializing lokust on the Kubernetes cluster
 
