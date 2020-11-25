@@ -97,14 +97,24 @@ func buildLocustTest(config Config, cm *corev1.ConfigMap) *loadtestsv1beta1.Locu
 }
 
 func buildLocustfile(config Config) *corev1.ConfigMap {
-	file, err := ioutil.ReadFile(config.Locustfile)
+	info, err := os.Stat(config.Locustfile)
 	if err != nil {
-		fmt.Printf("Error reading locustfile. err: %s", err)
+		fmt.Printf("Error reading locustfile: %s. err: %s\n", config.Locustfile, err)
 		os.Exit(1)
 	}
 
-	configMapData := make(map[string]string, 0)
-	configMapData["locustfile.py"] = string(file)
+	var cmData map[string]string
+
+	if info.IsDir() {
+		fmt.Printf("lokust does not support using directories in the moment. \nPlease open an issue on GitHub if you want to see that feature.")
+		os.Exit(1)
+	} else {
+		cmData, err = buildConfigmapFromFile(config.Locustfile)
+		if err != nil {
+			fmt.Printf("Error reading locustfile. err: %s\n", err)
+			os.Exit(1)
+		}
+	}
 
 	configMap := corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
@@ -115,10 +125,22 @@ func buildLocustfile(config Config) *corev1.ConfigMap {
 			Name:      buildResourceName(config.Name, "configmap"),
 			Namespace: config.Namespace,
 		},
-		Data: configMapData,
+		Data: cmData,
 	}
 
 	return &configMap
+}
+
+func buildConfigmapFromFile(filename string) (map[string]string, error) {
+	file, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	configMapData := make(map[string]string, 0)
+	configMapData["locustfile.py"] = string(file)
+
+	return configMapData, nil
 }
 
 func buildResourceName(testName string, resourceType ...string) string {
