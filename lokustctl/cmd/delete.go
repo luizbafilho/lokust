@@ -16,7 +16,9 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -24,16 +26,34 @@ import (
 // deleteCmd represents the delete command
 var deleteCmd = &cobra.Command{
 	Use:   "delete",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Delete a lokust test",
+	Long: `Delete a lokust test by name
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("delete called")
+	lokust delete [test-name]
+	`,
+	Args: func(cmd *cobra.Command, args []string) error {
+		if len(args) < 1 {
+			return errors.New("requires the locust test name")
+		}
+
+		return nil
 	},
+	Run: deleteRun,
+}
+
+func deleteRun(cmd *cobra.Command, args []string) {
+	testName := args[0]
+	err := kclientset.CoreV1().ConfigMaps(config.Namespace).Delete(buildResourceName(testName, "configmap"), nil)
+	if err != nil {
+		fmt.Printf("Failed deleting %s locustfile configmap. err: %s\n", testName, err)
+		os.Exit(1)
+	}
+
+	err = ltclientset.LoadtestsV1beta1().LocustTests(config.Namespace).Delete(testName, nil)
+	if err != nil {
+		fmt.Printf("Failed deleting %s test. err: %s\n", testName, err)
+		os.Exit(1)
+	}
 }
 
 func init() {

@@ -143,16 +143,6 @@ func buildConfigmapFromFile(filename string) (map[string]string, error) {
 	return configMapData, nil
 }
 
-func buildResourceName(testName string, resourceType ...string) string {
-	name := fmt.Sprintf("lokust-%s", testName)
-
-	if len(resourceType) > 1 {
-		name += "-" + resourceType[0]
-	}
-
-	return name
-}
-
 func ConvertToCoreV1ResourceList(resourceList map[string]string) corev1.ResourceList {
 	capacity := make(corev1.ResourceList)
 
