@@ -17,12 +17,14 @@ package cmd
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	"github.com/k0kubun/pp"
 	loadtestsv1beta1 "github.com/luizbafilho/lokust/apis/loadtests/v1beta1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,7 +43,14 @@ var createCmd = &cobra.Command{
 
 func createRun(cmd *cobra.Command, args []string) {
 	pp.Println(config)
-	lt, err := ltclientset.LoadtestsV1beta1().LocustTests(config.Namespace).Create(buildLocustTest(config))
+
+	cm, err := kclientset.CoreV1().ConfigMaps(config.Namespace).Create(buildLocustfile(config))
+	if err != nil {
+		fmt.Printf("Failed creating %s locustfile configmap. err: %s", cm.Name, err)
+		os.Exit(1)
+	}
+
+	lt, err := ltclientset.LoadtestsV1beta1().LocustTests(config.Namespace).Create(buildLocustTest(config, cm))
 	if err != nil {
 		fmt.Printf("Failed creating %s test. err: %s", lt.Name, err)
 		os.Exit(1)
@@ -55,12 +64,13 @@ func init() {
 
 	createCmd.Flags().StringVar(&config.Name, "name", "", "Test name")
 	createCmd.MarkFlagRequired("name")
+	createCmd.Flags().StringVarP(&config.Locustfile, "locustfile", "f", "", "Python module file to import, e.g. 'locustfile.py'")
+	createCmd.MarkFlagRequired("locustfile")
 
 	createCmd.Flags().Int32Var(&config.Replicas, "replicas", 1, "Worker nodes")
 }
 
-func buildLocustTest(config Config) *loadtestsv1beta1.LocustTest {
-
+func buildLocustTest(config Config, cm *corev1.ConfigMap) *loadtestsv1beta1.LocustTest {
 	test := loadtestsv1beta1.LocustTest{
 		TypeMeta: metav1.TypeMeta{APIVersion: loadtestsv1beta1.SchemeGroupVersion.String(), Kind: "LocustTest"},
 		ObjectMeta: metav1.ObjectMeta{
@@ -79,10 +89,46 @@ func buildLocustTest(config Config) *loadtestsv1beta1.LocustTest {
 					Requests: ConvertToCoreV1ResourceList(config.Resources.Workers.Requests),
 				},
 			},
+			ConfigmapName: cm.Name,
 		},
 	}
 
 	return &test
+}
+
+func buildLocustfile(config Config) *corev1.ConfigMap {
+	file, err := ioutil.ReadFile(config.Locustfile)
+	if err != nil {
+		fmt.Printf("Error reading locustfile. err: %s", err)
+		os.Exit(1)
+	}
+
+	configMapData := make(map[string]string, 0)
+	configMapData["locustfile.py"] = string(file)
+
+	configMap := corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ConfigMap",
+			APIVersion: appsv1.SchemeGroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      buildResourceName(config.Name, "configmap"),
+			Namespace: config.Namespace,
+		},
+		Data: configMapData,
+	}
+
+	return &configMap
+}
+
+func buildResourceName(testName string, resourceType ...string) string {
+	name := fmt.Sprintf("lokust-%s", testName)
+
+	if len(resourceType) > 1 {
+		name += "-" + resourceType[0]
+	}
+
+	return name
 }
 
 func ConvertToCoreV1ResourceList(resourceList map[string]string) corev1.ResourceList {

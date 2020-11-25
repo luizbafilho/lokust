@@ -40,6 +40,9 @@ spec:
         spec:
           description: LocustTestSpec defines the desired state of LocustTest
           properties:
+            configmap_name:
+              description: Configmap holding locustfiles
+              type: string
             replicas:
               description: Number of workers
               format: int32

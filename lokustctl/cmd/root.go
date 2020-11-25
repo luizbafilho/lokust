@@ -22,6 +22,7 @@ import (
 
 	loadtestsclientset "github.com/luizbafilho/lokust/clientset/versioned"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 
@@ -32,6 +33,7 @@ var (
 	config      Config = Config{}
 	cfgFile     string
 	ltclientset *loadtestsclientset.Clientset
+	kclientset  *kubernetes.Clientset
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -58,6 +60,12 @@ func Execute() {
 
 	// create the clientset
 	ltclientset, err = loadtestsclientset.NewForConfig(config)
+	if err != nil {
+		fmt.Printf("Unable to create loadtest kubernetes client: %s", err)
+		os.Exit(1)
+	}
+	// create the clientset
+	kclientset, err = kubernetes.NewForConfig(config)
 	if err != nil {
 		fmt.Printf("Unable to create kubernetes client: %s", err)
 		os.Exit(1)

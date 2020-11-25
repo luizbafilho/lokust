@@ -39,6 +39,9 @@ type LocustTestSpec struct {
 	// +optional
 	// Test resources
 	Resources LocustTestResources `json:"resources,omitempty"`
+
+	// Configmap holding locustfiles
+	ConfigmapName string `json:"configmap_name,omitempty"`
 }
 
 // LocustTestStatus defines the observed state of LocustTest

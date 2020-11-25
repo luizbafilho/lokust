@@ -1,4 +1,3 @@
-name: luiz
 replicas: 1
 resources:
   master:

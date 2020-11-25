@@ -216,7 +216,7 @@ func (r *LocustTestReconciler) desiredMasterDeployment(test loadtestsv1beta1.Loc
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "locustfile-configmap",
+										Name: test.Spec.ConfigmapName,
 									},
 								},
 							},
@@ -284,7 +284,7 @@ func (r *LocustTestReconciler) desiredWorkerDeployment(test loadtestsv1beta1.Loc
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "locustfile-configmap",
+										Name: test.Spec.ConfigmapName,
 									},
 								},
 							},

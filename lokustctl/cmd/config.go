@@ -16,5 +16,5 @@ type Config struct {
 	Replicas  int32         `json:"replicas,omitempty"`
 	Resources TestResources `json:"resources,omitempty"`
 
-	File string `json:"file,omitempty"`
+	Locustfile string `json:"locustfile,omitempty"`
 }
