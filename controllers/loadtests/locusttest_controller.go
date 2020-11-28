@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	loadtestsv1beta1 "github.com/luizbafilho/lokust/apis/loadtests/v1beta1"
+	"github.com/luizbafilho/lokust/common"
 )
 
 const (
@@ -128,10 +129,9 @@ func (r *LocustTestReconciler) desiredMasterService(test loadtestsv1beta1.Locust
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      test.Name,
 			Namespace: test.Namespace,
-			// OwnerReferences: []metav1.OwnerReference{*controller.NewProxyOwnerRef(p)},
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: makeLabels(test, ComponentMaster),
+			Selector: common.MakeLabels(test, ComponentMaster),
 			Type:     "ClusterIP",
 			Ports: []corev1.ServicePort{
 				{
@@ -180,11 +180,11 @@ func (r *LocustTestReconciler) desiredMasterDeployment(test loadtestsv1beta1.Loc
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas, // won't be nil because defaulting
 			Selector: &metav1.LabelSelector{
-				MatchLabels: makeLabels(test, ComponentMaster),
+				MatchLabels: common.MakeLabels(test, ComponentMaster),
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: makeLabels(test, ComponentMaster),
+					Labels: common.MakeLabels(test, ComponentMaster),
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -244,11 +244,11 @@ func (r *LocustTestReconciler) desiredWorkerDeployment(test loadtestsv1beta1.Loc
 		Spec: appsv1.DeploymentSpec{
 			Replicas: test.Spec.Replicas, // won't be nil because defaulting
 			Selector: &metav1.LabelSelector{
-				MatchLabels: makeLabels(test, ComponentWorker),
+				MatchLabels: common.MakeLabels(test, ComponentWorker),
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: makeLabels(test, ComponentWorker),
+					Labels: common.MakeLabels(test, ComponentWorker),
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -300,11 +300,4 @@ func (r *LocustTestReconciler) desiredWorkerDeployment(test loadtestsv1beta1.Loc
 	}
 
 	return depl, nil
-}
-
-func makeLabels(test loadtestsv1beta1.LocustTest, component string) map[string]string {
-	return map[string]string{
-		"lokust-loadtest-name": test.Name,
-		"locust-component":     component,
-	}
 }
