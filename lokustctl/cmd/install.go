@@ -26,6 +26,10 @@ import (
 	"github.com/markbates/pkger"
 	"github.com/markbates/pkger/pkging"
 	"github.com/spf13/cobra"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"sigs.k8s.io/kustomize/k8sdeps"
+	"sigs.k8s.io/kustomize/pkg/commands/build"
+	"sigs.k8s.io/kustomize/pkg/fs"
 )
 
 // installCmd represents the install command
@@ -44,6 +48,19 @@ func installRun(cmd *cobra.Command, args []string) {
 	defer os.RemoveAll(dir)
 
 	err = copyDir("/config", dir)
+	if err != nil {
+		panic(err)
+	}
+
+	stream := genericclioptions.IOStreams{
+		In:     os.Stdin,
+		Out:    os.Stdout,
+		ErrOut: os.Stderr,
+	}
+
+	f := k8sdeps.NewFactory()
+	o := build.NewOptions(dir+"/default", "")
+	err = o.RunBuild(stream.Out, fs.MakeRealFS(), f.ResmapF, f.TransformerF)
 	if err != nil {
 		panic(err)
 	}
