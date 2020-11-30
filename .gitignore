@@ -18,3 +18,5 @@ __pycache__
 
 # skip bin
 bin/*
+
+lokustctl/lokustctl$

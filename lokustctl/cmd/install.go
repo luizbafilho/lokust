@@ -16,36 +16,81 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
 
+	"github.com/markbates/pkger"
+	"github.com/markbates/pkger/pkging"
 	"github.com/spf13/cobra"
 )
 
 // installCmd represents the install command
 var installCmd = &cobra.Command{
 	Use:   "install",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Output Kubernetes resources to install Lokust operator",
+	Long:  `Output Kubernetes resources to install Lokust operator`,
+	Run:   installRun,
+}
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("install called")
-	},
+func installRun(cmd *cobra.Command, args []string) {
+	dir, err := ioutil.TempDir(".", "lokust-install-")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	err = copyDir("/config", dir)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func copyDir(source, destination string) error {
+	var err error = pkger.Walk(source, func(path string, info os.FileInfo, err error) error {
+		path = strings.Split(path, ":")[1]
+		var relPath string = strings.Replace(path, source, "", 1)
+		if relPath == "" {
+			return nil
+		}
+		if info.IsDir() {
+			return os.Mkdir(filepath.Join(destination, relPath), 0755)
+		} else {
+			return copyFile(filepath.Join(source, relPath), filepath.Join(destination, relPath))
+		}
+	})
+	return err
+}
+
+// File copies a single file from src to dst
+func copyFile(src, dst string) error {
+	var err error
+	var srcfd pkging.File
+	var dstfd *os.File
+	var srcinfo os.FileInfo
+
+	if srcfd, err = pkger.Open(src); err != nil {
+		return err
+	}
+	defer srcfd.Close()
+
+	if dstfd, err = os.Create(dst); err != nil {
+		return err
+	}
+	defer dstfd.Close()
+
+	if _, err = io.Copy(dstfd, srcfd); err != nil {
+		return err
+	}
+	if srcinfo, err = pkger.Stat(src); err != nil {
+		return err
+	}
+	return os.Chmod(dst, srcinfo.Mode())
 }
 
 func init() {
 	rootCmd.AddCommand(installCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// installCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// installCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
