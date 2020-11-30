@@ -23,13 +23,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/luizbafilho/lokust/lokustctl/kustomize/kustfile"
 	"github.com/markbates/pkger"
 	"github.com/markbates/pkger/pkging"
 	"github.com/spf13/cobra"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"sigs.k8s.io/kustomize/k8sdeps"
-	"sigs.k8s.io/kustomize/pkg/commands/build"
-	"sigs.k8s.io/kustomize/pkg/fs"
+	"sigs.k8s.io/kustomize/api/filesys"
 )
 
 // installCmd represents the install command
@@ -41,29 +39,72 @@ var installCmd = &cobra.Command{
 }
 
 func installRun(cmd *cobra.Command, args []string) {
+	currDir, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	dir, err := ioutil.TempDir(".", "lokust-install-")
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
+	// defer os.RemoveAll(dir)
+
+	defaultDir := dir + "/default"
 
 	err = copyDir("/config", dir)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
-	stream := genericclioptions.IOStreams{
-		In:     os.Stdin,
-		Out:    os.Stdout,
-		ErrOut: os.Stderr,
-	}
-
-	f := k8sdeps.NewFactory()
-	o := build.NewOptions(dir+"/default", "")
-	err = o.RunBuild(stream.Out, fs.MakeRealFS(), f.ResmapF, f.TransformerF)
+	err = os.Chdir(defaultDir)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
+
+	if err := runSetNamespace("eiiita"); err != nil {
+		log.Fatal(err)
+	}
+
+	err = os.Chdir(currDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// setCmd := set.NewCmdSet(fs.MakeRealFS(), f.ValidatorF)
+	// nsSet, _, err := setCmd.Find([]string{"namespace"})
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// err = nsSet.RunE(cmd, []string{"foo1"})
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// stream := genericclioptions.IOStreams{
+	// 	In:     os.Stdin,
+	// 	Out:    os.Stdout,
+	// 	ErrOut: os.Stderr,
+	// }
+
+	// f := k8sdeps.NewFactory()
+	// o := build.NewOptions(defaultDir, "")
+	// err = o.RunBuild(stream.Out, fs.MakeRealFS(), f.ResmapF, f.TransformerF)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+}
+
+func runSetNamespace(namespace string) error {
+	mf, err := kustfile.NewKustomizationFile(filesys.MakeFsOnDisk())
+	if err != nil {
+		return err
+	}
+	m, err := mf.Read()
+	if err != nil {
+		return err
+	}
+	m.Namespace = namespace
+	return mf.Write(m)
 }
 
 func copyDir(source, destination string) error {
