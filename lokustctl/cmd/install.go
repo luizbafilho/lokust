@@ -36,14 +36,28 @@ import (
 var (
 	kustomizeNamespace  string
 	kustomizeNamePrefix string
+	saveToDisk          bool
+	saveDir             string
 )
 
 // installCmd represents the install command
 var installCmd = &cobra.Command{
 	Use:   "install",
 	Short: "Output Kubernetes resources to install Lokust operator",
-	Long:  `Output Kubernetes resources to install Lokust operator`,
-	Run:   installRun,
+	Long: `Output Kubernetes resources to install Lokust operator
+
+This command provides Kubernetes configs necessary to install the Lokust Operator.
+	`,
+	Example: `  # Default install.
+  lokustctl install | kubectl apply -f -
+
+  # Install Lokust Operator into a non-default namespace.
+  lokustctl install --namespace lokust-tests | kubectl apply -f -
+
+  # Save Lokust Operator kubernetes yaml files into the disk.
+  lokustctl install --save-to-disk
+	`,
+	Run: installRun,
 }
 
 func installRun(cmd *cobra.Command, args []string) {
@@ -52,15 +66,15 @@ func installRun(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	dir, err := ioutil.TempDir(".", "lokust-install-")
+	tempDir, err := ioutil.TempDir(".", "lokust-install-")
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
+	defer os.RemoveAll(tempDir)
 
-	defaultDir := dir + "/default"
+	defaultDir := tempDir + "/default"
 
-	err = copyDir("/config", dir)
+	err = copyDir("/config", tempDir)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -79,8 +93,12 @@ func installRun(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	if err := runKustomizeBuild(defaultDir); err != nil {
-		log.Fatal(err)
+	if saveToDisk {
+		os.Rename(tempDir, saveDir)
+	} else {
+		if err := runKustomizeBuild(defaultDir); err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
@@ -182,6 +200,9 @@ func copyFile(src, dst string) error {
 func init() {
 	rootCmd.AddCommand(installCmd)
 
-	installCmd.Flags().StringVar(&kustomizeNamePrefix, "name-prefix", "lokust-", "kubernetes resources name prefix override (default lokust-)")
-	installCmd.Flags().StringVar(&kustomizeNamespace, "namespace", "lokust-system", "kubernetes name to install the operator (default lokust-system)")
+	installCmd.Flags().StringVar(&kustomizeNamePrefix, "name-prefix", "lokust-", "kubernetes resources name prefix override")
+	installCmd.Flags().StringVar(&kustomizeNamespace, "namespace", "lokust-system", "kubernetes name to install the operator")
+
+	installCmd.Flags().BoolVar(&saveToDisk, "save-to-disk", false, "save installation files to the disk instead of printing them out")
+	installCmd.Flags().StringVar(&saveDir, "dir", "./lokust-install", "directory where files should be saved when using --save-to-disk flag")
 }
