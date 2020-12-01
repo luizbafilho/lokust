@@ -181,5 +181,6 @@ func copyFile(src, dst string) error {
 
 func init() {
 	rootCmd.AddCommand(installCmd)
+
 	installCmd.Flags().StringVar(&kustomizeNamePrefix, "name-prefix", "lokust-", "kubernetes resources name prefix override (default lokust-)")
 }

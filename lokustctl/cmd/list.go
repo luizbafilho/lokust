@@ -53,4 +53,6 @@ func listRun(cmd *cobra.Command, args []string) {
 
 func init() {
 	rootCmd.AddCommand(listCmd)
+
+	setGlobalFlags(listCmd.Flags())
 }

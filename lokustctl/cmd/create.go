@@ -62,12 +62,13 @@ func init() {
 
 	viper.BindPFlags(createCmd.Flags())
 
-	createCmd.Flags().StringVar(&config.Name, "name", "", "Test name")
+	setGlobalFlags(createCmd.Flags())
+	createCmd.Flags().StringVar(&config.Name, "name", "", "test name")
 	createCmd.MarkFlagRequired("name")
-	createCmd.Flags().StringVarP(&config.Locustfile, "locustfile", "f", "", "Python module file to import, e.g. 'locustfile.py'")
+	createCmd.Flags().StringVarP(&config.Locustfile, "locustfile", "f", "", "python module file to import, e.g. 'locustfile.py'")
 	createCmd.MarkFlagRequired("locustfile")
 
-	createCmd.Flags().Int32Var(&config.Replicas, "replicas", 1, "Worker nodes")
+	createCmd.Flags().Int32Var(&config.Replicas, "replicas", 1, "worker nodes")
 }
 
 func buildLocustTest(config Config, cm *corev1.ConfigMap) *loadtestsv1beta1.LocustTest {

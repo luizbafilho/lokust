@@ -4,10 +4,16 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/spf13/pflag"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 )
+
+func setGlobalFlags(flags *pflag.FlagSet) {
+	flags.StringVar(&cfgFile, "config", "", "config file (default <current directory>/lokust.yaml)")
+	flags.StringVar(&config.Namespace, "namespace", "default", "kubernetes namespace")
+}
 
 func getKubeConfig() (*rest.Config, error) {
 	kubeconfig := filepath.Join(homedir.HomeDir(), ".kube", "config")

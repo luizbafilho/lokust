@@ -177,5 +177,6 @@ func PortForwardAPod(req PortForwardAPodRequest) error {
 func init() {
 	rootCmd.AddCommand(connectCmd)
 
-	connectCmd.Flags().IntVarP(&config.ConnectPort, "port", "p", 8089, "Connect local port")
+	setGlobalFlags(connectCmd.Flags())
+	connectCmd.Flags().IntVarP(&config.ConnectPort, "port", "p", 8089, "local port to bind the proxy")
 }

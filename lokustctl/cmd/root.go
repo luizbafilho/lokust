@@ -42,9 +42,6 @@ var rootCmd = &cobra.Command{
 	Short: "lokustctl controls lokust operator",
 	Long: `lokustctl helps you manager your distributed tests on kubernetes by
 	creating all necessary resources so you don't have to manage multiple yaml files.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	//	Run: func(cmd *cobra.Command, args []string) { },
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -79,17 +76,6 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default <current directory>/lokust.yaml)")
-	rootCmd.PersistentFlags().StringVar(&config.Namespace, "namespace", "default", "Kubernetes namespace")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 // initConfig reads in config file and ENV variables if set.
