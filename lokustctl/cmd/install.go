@@ -133,7 +133,7 @@ func runSetNamepaceAndNameprefix() error {
 		return err
 	}
 	m.NamePrefix = kustomizeNamePrefix
-	m.Namespace = config.Namespace
+	m.Namespace = kustomizeNamespace
 	return mf.Write(m)
 }
 
@@ -183,4 +183,5 @@ func init() {
 	rootCmd.AddCommand(installCmd)
 
 	installCmd.Flags().StringVar(&kustomizeNamePrefix, "name-prefix", "lokust-", "kubernetes resources name prefix override (default lokust-)")
+	installCmd.Flags().StringVar(&kustomizeNamespace, "namespace", "lokust-system", "kubernetes name to install the operator (default lokust-system)")
 }

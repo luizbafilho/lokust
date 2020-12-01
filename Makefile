@@ -39,9 +39,8 @@ deploy: manifests
 	kustomize build config/default | kubectl apply -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
-manifests: controller-gen pkger
+manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-	pkger -o lokustctl
 
 # Run go fmt against code
 fmt:
@@ -62,9 +61,6 @@ docker-build: test
 # Push the docker image
 docker-push:
 	docker push ${IMG}
-
-pkger:
-	go get github.com/markbates/pkger/cmd/pkger
 
 # find or download controller-gen
 # download controller-gen if necessary
