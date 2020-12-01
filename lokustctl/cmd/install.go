@@ -28,6 +28,14 @@ import (
 	"github.com/markbates/pkger/pkging"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/kustomize/api/filesys"
+	"sigs.k8s.io/kustomize/api/konfig"
+	"sigs.k8s.io/kustomize/api/krusty"
+	"sigs.k8s.io/kustomize/api/types"
+)
+
+var (
+	kustomizeNamespace  string
+	kustomizeNamePrefix string
 )
 
 // installCmd represents the install command
@@ -48,7 +56,7 @@ func installRun(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// defer os.RemoveAll(dir)
+	defer os.RemoveAll(dir)
 
 	defaultDir := dir + "/default"
 
@@ -62,7 +70,7 @@ func installRun(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	if err := runSetNamespace("eiiita"); err != nil {
+	if err := runSetNamepaceAndNameprefix(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -70,28 +78,36 @@ func installRun(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// setCmd := set.NewCmdSet(fs.MakeRealFS(), f.ValidatorF)
-	// nsSet, _, err := setCmd.Find([]string{"namespace"})
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// err = nsSet.RunE(cmd, []string{"foo1"})
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
 
-	// stream := genericclioptions.IOStreams{
-	// 	In:     os.Stdin,
-	// 	Out:    os.Stdout,
-	// 	ErrOut: os.Stderr,
-	// }
+	if err := runKustomizeBuild(defaultDir); err != nil {
+		log.Fatal(err)
+	}
+}
 
-	// f := k8sdeps.NewFactory()
-	// o := build.NewOptions(defaultDir, "")
-	// err = o.RunBuild(stream.Out, fs.MakeRealFS(), f.ResmapF, f.TransformerF)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+func runKustomizeBuild(dir string) error {
+	opts := &krusty.Options{
+		// When true, this means sort the resources before emitting them,
+		// per a particular sort order.  When false, don't do the sort,
+		// and instead respect the depth-first resource input order as
+		// specified by the kustomization files in the input tree.
+		// TODO: get this from shell (arg, flag or env).
+		DoLegacyResourceSort: true,
+		// In the kubectl context, avoid security issues.
+		LoadRestrictions: types.LoadRestrictionsRootOnly,
+		// In the kubectl context, avoid security issues.
+		PluginConfig: konfig.DisabledPluginConfig(),
+	}
+	m, err := krusty.MakeKustomizer(filesys.MakeFsOnDisk(), opts).Run(dir)
+	if err != nil {
+		return err
+	}
+	res, err := m.AsYaml()
+	if err != nil {
+		return err
+	}
+
+	_, err = os.Stdout.Write(res)
+	return err
 }
 
 func runSetNamespace(namespace string) error {
@@ -104,6 +120,20 @@ func runSetNamespace(namespace string) error {
 		return err
 	}
 	m.Namespace = namespace
+	return mf.Write(m)
+}
+
+func runSetNamepaceAndNameprefix() error {
+	mf, err := kustfile.NewKustomizationFile(filesys.MakeFsOnDisk())
+	if err != nil {
+		return err
+	}
+	m, err := mf.Read()
+	if err != nil {
+		return err
+	}
+	m.NamePrefix = kustomizeNamePrefix
+	m.Namespace = config.Namespace
 	return mf.Write(m)
 }
 
@@ -151,4 +181,5 @@ func copyFile(src, dst string) error {
 
 func init() {
 	rootCmd.AddCommand(installCmd)
+	installCmd.Flags().StringVar(&kustomizeNamePrefix, "name-prefix", "lokust-", "kubernetes resources name prefix override (default lokust-)")
 }
