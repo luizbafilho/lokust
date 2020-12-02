@@ -14,13 +14,20 @@ builds:
     goos:
       - linux
       - darwin
+    goarch:
+      - amd64
+    ignore:
+      - goos: darwin
+        goarch: 386
+      - goos: linux
+        goarch: 386
 release:
   prerelease: auto
 archives:
   - format: binary
     replacements:
-      darwin: Darwin
-      linux: Linux
+      darwin: darwin
+      linux: linux
       amd64: x86_64
 checksum:
   name_template: "checksums.txt"

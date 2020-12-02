@@ -1,51 +1,76 @@
 # lokust
 
-[Locust.io](https://locust.io/) Kubernetes Operator
+Lokust is a [Locust.io](https://locust.io/) Kubernetes Operator. It helps integrate Locust distributed mode into Kubernetes, so you easely scale up and down your load tests without the hassle of provisioning infrastructure.
 
-**Initializing lokust on the Kubernetes cluster**
+## Getting Started
 
-This deploys all necessary k8s CRDs used to manage the tests
+**Install lokustctl**
+
+It will be used to interface with the `lokust` controller, helping to manage your tests without having to deal with kubernetes yaml files, so anyone regardless of knowing kubernetes can create and run tests.
 
 ```sh
-linkerd install | kubectl apply -f -
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+VERSION="0.1.0-beta.1"
+
+curl -L -s -o ./lokustctl "https://github.com/luizbafilho/lokust/releases/download/v${VERSION}/lokustctl_${VERSION}_${OS}_${ARCH}"
+
+chmod +x ./lokustctl
+mv lokustctl /usr/local/bin
+lokustctl -h
 ```
 
-**Creates the test loadtests namespace using a single file**
+**Deploy Lokust Controller**
+
+You can you `lokustctl` to deploy the Lokust controller into Kubernetes. The following command will apply all kubernetes manifests necessary  deploy the controller.
+
+It will deploy them by default into `lokust-system` namespace, you can specify a different one using `--namespace`
 
 ```sh
-lokustctl create --namespace loadtests --name app-test --replicas 8 -f locustfile.py
+$ lokustctl install | kubectl apply -f -
 ```
 
-**Scale a load test**
+
+**Create a new load test**
+
+We first need a `locustfile.py` that defines your test behavior. More info at [locust.io](https://locust.io/) on how to write it.
 
 ```sh
-lokustctl scale --name app-test --replicas 10
+cat <<EOT >> locustfile.py
+from locust import HttpUser, between, task
+
+class WebsiteUser(HttpUser):
+    host = "https://google.com"
+    wait_time = between(5, 15)
+
+    @task
+    def index(self):
+        self.client.get("/")
+EOT
 ```
 
-**Creates the the test in the current namespace passing the directory as execution module**
-
-> requires the locustfile.py file to be in the root directory
-
 ```sh
-lokustctl create --name app-test --replicas 8 -f ./load-test
+lokustctl create --name app-test --replicas 2 -f locustfile.py
 ```
 
 **Lists all current tests**
 
 ```sh
-lokustctl ls
+lokustctl list
 ```
 
-**Connect to a test**
+**Access the test's dashboard**
 
-It creates a kubernetes `port-forward` to the master pod, so you can access the dashboard and execute your test.
+To actually start the test you need to access the test's dashboard. To access it in a kubernetes environment we need to create a local proxy that redirects you the the test created there. To do that execute:
 
 ```sh
-lokustctl connect --name app-test
+lokustctl connect app-test
 ```
 
-**Delete a test**
+**Delete the test**
+
+Due the locust tests nature, it will run indefinetly on kubernetes consuming resources until you delete it.
 
 ```sh
-lokustctl delete --name app-test
+lokustctl delete app-test
 ```
