@@ -20,3 +20,4 @@ __pycache__
 bin/*
 
 lokustctl/lokustctl
+dist
